@@ -72,7 +72,7 @@ button{cursor:pointer}
     <div id="dropzone" class="dropzone">
       <div class="dropicon">⇧</div>
       <p>Drop your Draft Bill of Lading (PDF or TXT) here</p>
-      <small>Supports all carriers (MSC, CMA CGM, Maersk, etc.)</small>
+      <small>Supports all carriers (CMA CGM, MSC, Maersk, etc.)</small>
       <label for="fileInput" class="file-btn" onclick="event.stopPropagation()">Browse files</label>
     </div>
     <div id="analysisStatus" class="analysis-status hidden">
@@ -149,6 +149,9 @@ function renderReport(data) {
 
   document.getElementById('caseTitle').textContent = `Audit Report · ${ext.bl_no || 'Draft B/L'}`;
 
+  const grossStr = ext.gross_mts ? `${ext.gross_mts.toFixed(3)} MTS (${ext.gross_kg.toLocaleString()} kg)` : `${(ext.gross_kg||0).toLocaleString()} kg`;
+  const netStr = ext.net_mts ? `${ext.net_mts.toFixed(3)} MTS (${ext.net_kg.toLocaleString()} kg)` : `${(ext.net_kg||0).toLocaleString()} kg`;
+
   // Page 1: Executive Summary & Discrepancy Matrix
   document.getElementById('summaryPage').innerHTML = `
     <div class="title">
@@ -158,12 +161,12 @@ function renderReport(data) {
     <div class="kpis">
       <div class="kpi"><span>Verdict</span><b class="${isBlocker ? 'red' : 'green'}">${verdict}</b></div>
       <div class="kpi"><span>Packages</span><b>${ext.packages || 0} ${ext.unit || ''}</b></div>
-      <div class="kpi"><span>Gross Wt</span><b>${(ext.gross_kg||0).toLocaleString()} kg</b></div>
+      <div class="kpi"><span>Gross Cargo Weight</span><b>${grossStr}</b></div>
       <div class="kpi"><span>Containers</span><b>${ext.container_count || 0}</b></div>
     </div>
     <div class="shipment">
       <div><label>Carrier</label><b>${ext.carrier || 'Not stated'}</b></div>
-      <div><label>Net Cargo Wt</label><b>${(ext.net_kg||0).toLocaleString()} kg</b></div>
+      <div><label>Net Cargo Weight</label><b>${netStr}</b></div>
       <div><label>GSTIN</label><b>${ext.gstin || 'Not detected'}</b></div>
       <div><label>IEC</label><b>${ext.iec || 'Not detected'}</b></div>
     </div>
@@ -190,7 +193,7 @@ function renderReport(data) {
       <div style="background: #edf3f8; padding: 10px 16px; font-size: 12px; font-weight: 700; color: #43556e; border-bottom: 1px solid var(--line);">
         Page ${idx + 1} — Carrier Original with Editorial Annotations
       </div>
-      <img src="${imgSrc}" style="width: 100%; display: block;" alt="B/L Page ${idx + 1}" />
+      <img src="${imgSrc}" style="width: 100%; display: block; min-height: 400px;" alt="B/L Page ${idx + 1}" />
     </div>
   `).join('');
 
