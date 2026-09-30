@@ -181,14 +181,24 @@ function renderReport(data) {
     </table>
   `;
 
-  // Page 2: Redline preview
+    // Page 2: Redline preview with actual carrier PDF page images
+  const pagesHtml = (ext.pages || []).map((imgSrc, idx) => `
+    <div style="margin-bottom: 24px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff;">
+      <div style="background: #edf3f8; padding: 10px 16px; font-size: 12px; font-weight: 700; color: #43556e; border-bottom: 1px solid var(--line);">
+        Page ${idx + 1} — Carrier Original with Editorial Annotations
+      </div>
+      <img src="${imgSrc}" style="width: 100%; display: block;" alt="B/L Page ${idx + 1}" />
+    </div>
+  `).join('');
+
   document.getElementById('redlinePage').innerHTML = `
     <div class="dochead">
-      <div><h3>DRAFT BILL OF LADING</h3><p>${ext.carrier} · ${ext.bl_no}</p></div>
+      <div><h3>DRAFT BILL OF LADING — EDITORIAL REDLINE VIEW</h3><p>${ext.carrier} · ${ext.bl_no}</p></div>
       <div class="badge ${isBlocker ? 'blocker' : 'match'}">${verdict}</div>
     </div>
-    <p><b>Container Particulars:</b> ${ext.containers && ext.containers.length ? ext.containers.join(', ') : 'None detected'}</p>
-    <p><b>Authority Check:</b> ${ext.on_behalf ? '<span class="check">✓ On Behalf Of Verified</span>' : '<span class="strike">Missing Authority Clause</span>'}</p>
+    <div style="margin-top: 20px;">
+      ${pagesHtml || '<p style="color: var(--muted); padding: 20px 0;">No page images generated.</p>'}
+    </div>
   `;
 
   document.getElementById('report').classList.remove('hidden');
