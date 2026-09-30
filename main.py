@@ -1,6 +1,7 @@
 import fitz  # PyMuPDF
 import json
 import os
+import traceback
 import base64
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,15 +19,51 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 
 NEREUS_SYSTEM_INSTRUCTION = """
 You are Nereus AI, the Senior Trade Document Validation & Compliance Specialist.
-Perform an exhaustive, multi-point statutory and commercial audit on the provided maritime Draft Bill of Lading.
+Perform an exhaustive, multi-point statutory and commercial audit on maritime Draft Bills of Lading.
 
-You must evaluate and return ALL 28 of the following audit dimensions in the 'discrepancies' array, even if they are clean matches:
-1. On Behalf Of Clause (Carrier template requirement: Shipper must have 'On Behalf Of [Principal]' or O/B or Jointly/Severally. Flag BLOCKER if absent.)
+You must return a single, valid JSON object following this exact schema:
+{
+  "bl_no": "Extracted B/L number",
+  "carrier": "Carrier legal entity name",
+  "commodity": "Commodity description (e.g. Raw Cotton in Compressed Bales, Raw Cashew Nuts in Shell)",
+  "packages": 880,
+  "unit": "Bales | Bags | Packages",
+  "gross_kg": 204950.0,
+  "gross_mts": 204.950,
+  "net_kg": 203190.0,
+  "net_mts": 203.190,
+  "container_count": 8,
+  "containers": ["TCKU7165641", "SEGU5438621"],
+  "avg_unit_weight": "230.9 kg/bale",
+  "gstin": "15-character GSTIN",
+  "iec": "10-character IEC",
+  "verdict": "APPROVED | CRITICAL BLOCKERS FOUND",
+  "discrepancies": [
+    {
+      "field": "Exact Field Name (e.g. On Behalf Of, Shipper, Consignee, Notify Party, GSTIN, IEC Code, GSTIN-IEC Consistency, Commodity, HS Code, Origin, Crop Year, Contract Ref, Total Bales, Total Cargo Gross, Total Cargo Net, Average Bale Weight, Packaging Tare, Port of Loading, Port of Discharge, Vessel Name, Ocean Voyage, Container Inventory, Container Tare Tolerance, Freight Terms, SOB Stamp, Originals Count, Carrier Entity)",
+      "req": "Benchmark / statutory / contractual requirement",
+      "stated": "Exact stated value on draft B/L",
+      "status": "match | warning | blocker",
+      "fix": "Required editorial correction or 'No action required'"
+    }
+  ],
+  "redline_actions": [
+    {
+      "action": "check | strike | callout",
+      "search_text": "Text anchor on document",
+      "correction_text": "Correction value (if strike)",
+      "callout_text": "Callout message (if callout)"
+    }
+  ]
+}
+
+MANDATORY AUDIT DIMENSIONS TO EVALUATE:
+1. On Behalf Of Clause (Carrier template requirement: Shipper must have 'On Behalf Of [Principal]' or O/B. Flag BLOCKER if absent.)
 2. Shipper Legal Entity & Address
 3. Consignee Negotiability (Standard 'TO ORDER')
 4. Notify Party Address & PIN Code Alignment
@@ -42,7 +79,7 @@ You must evaluate and return ALL 28 of the following audit dimensions in the 'di
 14. Total Cargo Gross Weight (Tonnage and kg reconciliation)
 15. Total Cargo Net Weight (Decimal and numeric format verification; flag BLOCKER if decimal missing)
 16. Average Unit Weight (Benchmark: Cotton 210-240 kg/bale; Cashew ~80 kg/bag)
-17. Packaging Tare Arithmetic (Gross KG - Net KG / packages; Cotton benchmark: 1.80-2.50 kg/bale; Cashew benchmark: 0.90-1.30 kg/bag)
+17. Packaging Tare Arithmetic (Gross KG - Net KG / packages; Cotton: 1.80-2.50 kg/bale; Cashew: 0.90-1.30 kg/bag)
 18. Port of Loading
 19. Port of Discharge
 20. Vessel Name Consistency (Header vessel must match Shipped on Board vessel; flag BLOCKER if mismatched)
@@ -54,46 +91,9 @@ You must evaluate and return ALL 28 of the following audit dimensions in the 'di
 26. Shipped on Board Execution (Date, port, and signature)
 27. Originals Set Count (Standard THREE (3))
 28. Carrier Legal Entity Name & Registration
-
-Return ONLY a single valid JSON object following this schema:
-{
-  "bl_no": "Extracted B/L number",
-  "carrier": "Carrier legal entity name",
-  "commodity": "Commodity description",
-  "packages": 880,
-  "unit": "Bales | Bags | Packages",
-  "gross_kg": 204950.0,
-  "gross_mts": 204.950,
-  "net_kg": 203190.0,
-  "net_mts": 203.190,
-  "container_count": 8,
-  "containers": ["TCKU7165641", "SEGU5438621"],
-  "avg_unit_weight": "230.9 kg/bale",
-  "gstin": "15-character GSTIN",
-  "iec": "10-character IEC",
-  "verdict": "APPROVED | CRITICAL BLOCKERS FOUND",
-  "discrepancies": [
-    {
-      "field": "Exact name of the audit dimension",
-      "req": "Statutory / commercial benchmark requirement",
-      "stated": "Exact value stated on draft B/L",
-      "status": "match | warning | blocker",
-      "fix": "Required editorial correction or 'No action required'"
-    }
-  ],
-  "redline_actions": [
-    {
-      "action": "check | strike | callout",
-      "search_text": "Exact text anchor on page to annotate",
-      "correction_text": "Correction value (for strike)",
-      "callout_text": "Callout instruction (for callout)"
-    }
-  ]
-}
 """
 
 def annotate_pdf_pages(doc, redline_actions):
-    """Draws discrete green checks and redlines directly onto carrier PDF pixels."""
     page_images = []
     baseline_checks = [
         "ORIGINAL", "BILL OF LADING", "FREIGHT PREPAID", "CONTAINER", "SEAL",
@@ -102,12 +102,10 @@ def annotate_pdf_pages(doc, redline_actions):
     ]
 
     for page in doc:
-        # Draw baseline checks on verified terms
         for term in baseline_checks:
             for rect in page.search_for(term)[:1]:
                 page.insert_text((rect.x1 + 4, rect.y1 - 1), "✓", fontsize=11, color=(0.07, 0.48, 0.27))
 
-        # Dynamic redlines from AI
         for action in redline_actions:
             search = action.get("search_text", "")
             if not search:
@@ -148,10 +146,12 @@ async def validate_document(file: UploadFile = File(...)):
 
     audit_data = None
     prompt = f"Perform the complete 28-point trade compliance and redline audit on this Bill of Lading text:\n\n{full_text}"
+    diagnostics = []
 
-    # Tier 1: Try Groq Primary (Fast inference)
+    # 1. Primary: Groq API
     if GROQ_API_KEY:
         try:
+            print("Executing Groq request...")
             groq_client = Groq(api_key=GROQ_API_KEY)
             chat_completion = groq_client.chat.completions.create(
                 messages=[
@@ -163,14 +163,19 @@ async def validate_document(file: UploadFile = File(...)):
                 temperature=0.1
             )
             raw_out = chat_completion.choices[0].message.content
+            print("Groq response received successfully")
             if raw_out:
                 audit_data = json.loads(raw_out)
-        except Exception:
-            audit_data = None
+        except Exception as e:
+            err = f"Groq execution failed: {type(e).__name__} - {str(e)}"
+            print(err)
+            traceback.print_exc()
+            diagnostics.append(err)
 
-    # Tier 2: Failover to Gemini if Groq fails
+    # 2. Failover: Gemini API
     if not audit_data and GEMINI_API_KEY:
         try:
+            print("Failing over to Gemini request...")
             gemini_client = genai.Client(api_key=GEMINI_API_KEY)
             resp = gemini_client.models.generate_content(
                 model="gemini-2.0-flash",
@@ -181,15 +186,20 @@ async def validate_document(file: UploadFile = File(...)):
                     temperature=0.1
                 )
             )
+            print("Gemini response received successfully")
             if resp and resp.text:
                 audit_data = json.loads(resp.text)
-        except Exception:
-            audit_data = None
+        except Exception as e:
+            err = f"Gemini execution failed: {type(e).__name__} - {str(e)}"
+            print(err)
+            traceback.print_exc()
+            diagnostics.append(err)
 
     if not audit_data:
-        raise RuntimeError("Validation engine temporarily busy. Please retry.")
+        diag_str = " | ".join(diagnostics) if diagnostics else "No API keys configured"
+        raise RuntimeError(f"Audit Engine Failure: {diag_str}")
 
-    # Annotate carrier PDF pages directly
+    # Annotate pages
     redline_actions = audit_data.get("redline_actions", [])
     page_images = annotate_pdf_pages(doc, redline_actions)
     audit_data["pages"] = page_images
