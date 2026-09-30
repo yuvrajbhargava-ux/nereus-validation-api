@@ -134,19 +134,32 @@ async def validate_document(file: UploadFile = File(...)):
         full_text += f"\n--- PAGE {idx + 1} ---\n" + page.get_text()
 
     # Call Gemini API with Nereus AI system instructions
+    
     client = genai.Client(api_key=GEMINI_API_KEY)
     
     prompt = f"Perform a complete trade compliance and redline audit on this Bill of Lading text:\n\n{full_text}"
     
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=NEREUS_SYSTEM_INSTRUCTION,
-            response_mime_type="application/json",
-            temperature=0.1
-        )
-    )
+    response = None
+    candidate_models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash", "gemini-3.8-flash"]
+    
+    for mod in candidate_models:
+        try:
+            response = client.models.generate_content(
+                model=mod,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=NEREUS_SYSTEM_INSTRUCTION,
+                    response_mime_type="application/json",
+                    temperature=0.1
+                )
+            )
+            if response and response.text:
+                break
+        except Exception as e:
+            continue
+
+    if not response or not response.text:
+        raise RuntimeError("All candidate models temporarily busy. Please retry in 10 seconds.")
     
     audit_data = json.loads(response.text)
     
