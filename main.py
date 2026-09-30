@@ -1,17 +1,14 @@
 import fitz  # PyMuPDF
 import json
 import os
-import re
 import base64
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-
-# API Clients
 from groq import Groq
 from google import genai
 from google.genai import types
 
-app = FastAPI(title="Nereus AI Dual-Engine Validation Service")
+app = FastAPI(title="Nereus AI Autonomous Trade Validation Engine")
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,13 +23,43 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 NEREUS_SYSTEM_INSTRUCTION = """
 You are Nereus AI, the Senior Trade Document Validation & Compliance Specialist.
-Audit maritime Draft Bills of Lading against international trade compliance standards, statutory regulations, and strict physical arithmetic benchmarks.
+Perform an exhaustive, multi-point statutory and commercial audit on the provided maritime Draft Bill of Lading.
 
-Return ONLY a single valid JSON object following this exact schema:
+You must evaluate and return ALL 28 of the following audit dimensions in the 'discrepancies' array, even if they are clean matches:
+1. On Behalf Of Clause (Carrier template requirement: Shipper must have 'On Behalf Of [Principal]' or O/B or Jointly/Severally. Flag BLOCKER if absent.)
+2. Shipper Legal Entity & Address
+3. Consignee Negotiability (Standard 'TO ORDER')
+4. Notify Party Address & PIN Code Alignment
+5. GSTIN Format (15-character statutory format; state code matches destination)
+6. DGFT IEC Code (10-character DGFT compliance; PAN-based is MATCH, numeric is WARNING)
+7. GSTIN-IEC Consistency (Characters 3-12 of GSTIN must equal IEC)
+8. Commercial Commodity Description
+9. HS Code (8-digit Indian Customs Tariff classification)
+10. Country of Origin
+11. Crop Year
+12. Contract Reference
+13. Total Package Sum (Sum across all containers)
+14. Total Cargo Gross Weight (Tonnage and kg reconciliation)
+15. Total Cargo Net Weight (Decimal and numeric format verification; flag BLOCKER if decimal missing)
+16. Average Unit Weight (Benchmark: Cotton 210-240 kg/bale; Cashew ~80 kg/bag)
+17. Packaging Tare Arithmetic (Gross KG - Net KG / packages; Cotton benchmark: 1.80-2.50 kg/bale; Cashew benchmark: 0.90-1.30 kg/bag)
+18. Port of Loading
+19. Port of Discharge
+20. Vessel Name Consistency (Header vessel must match Shipped on Board vessel; flag BLOCKER if mismatched)
+21. Ocean Voyage Number
+22. Container Count & Type (e.g. 40HC, 20FT)
+23. Container Inventory & Seal Numbers
+24. Container Equipment Tare Tolerances (Benchmark: 3,700-3,900 kg per 40HC steel container)
+25. Freight Payment Terms (Prepaid vs Collect)
+26. Shipped on Board Execution (Date, port, and signature)
+27. Originals Set Count (Standard THREE (3))
+28. Carrier Legal Entity Name & Registration
+
+Return ONLY a single valid JSON object following this schema:
 {
   "bl_no": "Extracted B/L number",
   "carrier": "Carrier legal entity name",
-  "commodity": "Commodity description (e.g. Raw Cotton in Compressed Bales, Raw Cashew Nuts in Shell)",
+  "commodity": "Commodity description",
   "packages": 880,
   "unit": "Bales | Bags | Packages",
   "gross_kg": 204950.0,
@@ -47,35 +74,27 @@ Return ONLY a single valid JSON object following this exact schema:
   "verdict": "APPROVED | CRITICAL BLOCKERS FOUND",
   "discrepancies": [
     {
-      "field": "Field name",
-      "req": "Benchmark / statutory requirement",
-      "stated": "Value stated on B/L",
+      "field": "Exact name of the audit dimension",
+      "req": "Statutory / commercial benchmark requirement",
+      "stated": "Exact value stated on draft B/L",
       "status": "match | warning | blocker",
-      "fix": "Required editorial correction"
+      "fix": "Required editorial correction or 'No action required'"
     }
   ],
   "redline_actions": [
     {
       "action": "check | strike | callout",
-      "search_text": "Text anchor on document",
-      "correction_text": "Correction value (if strike)",
-      "callout_text": "Callout message (if callout)"
+      "search_text": "Exact text anchor on page to annotate",
+      "correction_text": "Correction value (for strike)",
+      "callout_text": "Callout instruction (for callout)"
     }
   ]
 }
-
-RULES:
-1. Shipper Authority: If Shipper block lacks 'On Behalf Of [Principal]' clause (or O/B, Pour le compte de), flag as BLOCKER.
-2. Vessel Consistency: If Header Vessel != Shipped-on-Board Vessel, flag as BLOCKER.
-3. Weight Decimal Format: If net weight missing decimal (e.g. '204 060 MTS'), flag as BLOCKER.
-4. Packaging Tare Arithmetic: Gross KG - Net KG. For Cotton: benchmark is 1.80-2.50 kg/bale. For RCN: benchmark is 0.90-1.30 kg/bag.
-5. Statutory IDs: GSTIN must be 15 chars. DGFT IEC must be 10 chars (PAN-based is MATCH; legacy numeric is WARNING).
 """
 
 def annotate_pdf_pages(doc, redline_actions):
-    """Draws discrete green checks and redline strikethroughs directly onto PDF pixels."""
+    """Draws discrete green checks and redlines directly onto carrier PDF pixels."""
     page_images = []
-    
     baseline_checks = [
         "ORIGINAL", "BILL OF LADING", "FREIGHT PREPAID", "CONTAINER", "SEAL",
         "TO ORDER", "MANGALORE", "TUTICORIN", "ABIDJAN", "SINGAPORE", "CMA CGM",
@@ -83,22 +102,20 @@ def annotate_pdf_pages(doc, redline_actions):
     ]
 
     for page in doc:
-        # 1. Baseline discrete green checks
+        # Draw baseline checks on verified terms
         for term in baseline_checks:
             for rect in page.search_for(term)[:1]:
                 page.insert_text((rect.x1 + 4, rect.y1 - 1), "✓", fontsize=11, color=(0.07, 0.48, 0.27))
 
-        # 2. Dynamic redlines and callouts from AI audit
+        # Dynamic redlines from AI
         for action in redline_actions:
             search = action.get("search_text", "")
             if not search:
                 continue
-            
             act = action.get("action")
             if act == "check":
                 for rect in page.search_for(search)[:2]:
                     page.insert_text((rect.x1 + 4, rect.y1 - 1), "✓", fontsize=11, color=(0.07, 0.48, 0.27))
-                    
             elif act == "strike":
                 for rect in page.search_for(search):
                     mid_y = (rect.y0 + rect.y1) / 2
@@ -106,7 +123,6 @@ def annotate_pdf_pages(doc, redline_actions):
                     corr = action.get("correction_text")
                     if corr:
                         page.insert_text((rect.x1 + 8, rect.y1 - 1), corr, fontsize=9.5, color=(0.78, 0.14, 0.10))
-                        
             elif act == "callout" and page.number == 0:
                 for rect in page.search_for(search)[:1]:
                     box = fitz.Rect(rect.x0 - 2, rect.y0 - 2, rect.x0 + 260, rect.y0 + 50)
@@ -121,142 +137,6 @@ def annotate_pdf_pages(doc, redline_actions):
 
     return page_images
 
-def local_fallback_engine(text):
-    """Deterministic local trade audit engine if cloud APIs are unavailable."""
-    bl_m = re.search(r"\b(AEV\d{7}|DKA\d{7}[A-Z]?|MEDU[A-Z0-9]{7,12}|RTM\d{7}[A-Z]?)\b", text)
-    bl_no = bl_m.group(1).replace("O", "0") if bl_m else "DRAFT B/L"
-
-    is_cotton = "COTTON" in text or "BALES" in text
-    is_cashew = "CASHEW" in text or "RCN" in text
-    commodity = "Raw Cotton in Compressed Bales" if is_cotton else ("Raw Cashew Nuts in Shell" if is_cashew else "General Cargo")
-    unit = "Bales" if is_cotton else ("Bags" if is_cashew else "Packages")
-
-    pkg_matches = [int(m.replace(",", "")) for m in re.findall(r"(\d[\d,]*)\s*(?:BALES|BAGS|PACKAGES|PKGS)", text)]
-    total_pkgs = max(pkg_matches) if pkg_matches else 0
-    if total_pkgs == 110 and pkg_matches.count(110) >= 8:
-        total_pkgs = 880
-    elif total_pkgs == 345 and pkg_matches.count(345) >= 4:
-        total_pkgs = 1380
-
-    containers = list(set(re.findall(r"\b([A-Z]{4}\d{7})\b", text)))
-    container_count = len(containers) if containers else (8 if "8X40" in text or "08X40" in text else 4)
-
-    gross_kg = 204950.0 if "204.950" in text or "204950" in text else (205820.0 if "205.820" in text or "205820" in text else (108670.0 if "108670" in text.replace(",", "").replace(".", "") else 252009.0))
-    net_kg = 203190.0 if "203.190" in text or "203190" in text else (204060.0 if "204.060" in text or "204 060" in text else (107218.0 if "107218" in text.replace(",", "").replace(".", "") else 249803.0))
-
-    net_missing_decimal = "204 060 MTS" in text or ("204 060" in text and "204.060" not in text)
-    vessel_mismatch = ("LAPEROUSE" in text) and ("CHRISTOPHE COLOMB" in text)
-    has_on_behalf = bool(re.search(r"ON\s+BEHALF\s+OF|O/B|POUR\s+LE\s+COMPTE\s+DE|SOLAGRI\s+PTE", text[:700]))
-
-    gstin_m = re.search(r"\b(\d{2}[A-Z]{5}\d{4}[A-Z]\dZ[A-Z0-9])\b", text)
-    gstin = gstin_m.group(1) if gstin_m else ""
-    iec_m = re.search(r"IEC(?:\s*CODE)?\s*[:\-]?\s*([A-Z0-9]{10})\b", text) or re.search(r"\b(\d{10})\b", text)
-    iec = iec_m.group(1) if iec_m else (gstin[2:12] if gstin else "")
-
-    discrepancies = []
-    redline_actions = []
-
-    if not has_on_behalf:
-        discrepancies.append({
-            "field": "On Behalf Of Clause",
-            "req": "Carrier template requires principal clause in Shipper block",
-            "stated": "ABSENT",
-            "status": "blocker",
-            "fix": "Principal unestablished. Insert 'ON BEHALF OF SOLAGRI PTE LTD' in Shipper block."
-        })
-        redline_actions.append({
-            "action": "callout",
-            "search_text": "COMPAGNIE IVOIRIENNE DE COTON",
-            "callout_text": "→ [!] CRITICAL BLOCKER: Insert 'ON BEHALF OF SOLAGRI PTE LTD'"
-        })
-    else:
-        discrepancies.append({
-            "field": "On Behalf Of Clause",
-            "req": "Carrier template principal authority clause",
-            "stated": "Verified Present",
-            "status": "match",
-            "fix": "No action required"
-        })
-
-    if vessel_mismatch:
-        discrepancies.append({
-            "field": "Vessel Name (Header vs SOB)",
-            "req": "Header vessel and SOB stamp must name identical vessel",
-            "stated": "Header: LAPEROUSE | SOB stamp: CHRISTOPHE COLOMB",
-            "status": "blocker",
-            "fix": "Customs/Bank reject. Correct SOB stamp vessel to CMA CGM LAPEROUSE."
-        })
-        redline_actions.append({
-            "action": "strike",
-            "search_text": "CHRISTOPHE COLOMB",
-            "correction_text": "LAPEROUSE"
-        })
-
-    if net_missing_decimal:
-        discrepancies.append({
-            "field": "Cargo Net Weight Format",
-            "req": "Standard decimal numeric format required (MTS)",
-            "stated": "'204 060 MTS' (missing decimal point)",
-            "status": "blocker",
-            "fix": "EDI rejection / ambiguous weight. Correct to '204.060 MTS'."
-        })
-        redline_actions.append({
-            "action": "strike",
-            "search_text": "204 060",
-            "correction_text": "204.060 MTS"
-        })
-
-    pkg_tare_total = gross_kg - net_kg
-    per_pkg_tare = (pkg_tare_total / total_pkgs) if total_pkgs > 0 else 0
-    discrepancies.append({
-        "field": "Packaging Tare Arithmetic",
-        "req": "Cotton packaging tare benchmark: 1.80–2.50 kg/bale" if is_cotton else "RCN benchmark: 0.90–1.30 kg/bag",
-        "stated": f"{pkg_tare_total:,.0f} kg total ({per_pkg_tare:.2f} kg/{unit.lower()[:-1]})",
-        "status": "match",
-        "fix": "No action required"
-    })
-
-    if gstin:
-        discrepancies.append({
-            "field": "GSTIN Validation",
-            "req": "15-character valid Indian statutory format",
-            "stated": gstin,
-            "status": "match",
-            "fix": "Verified clean against GST portal pattern."
-        })
-
-    if iec:
-        discrepancies.append({
-            "field": "DGFT IEC Format",
-            "req": "PAN-based 10-character alphanumeric IEC",
-            "stated": iec,
-            "status": "match",
-            "fix": "Verified PAN-based alphanumeric IEC."
-        })
-
-    blockers = [d for d in discrepancies if d["status"] == "blocker"]
-    avg_unit_wt = (net_kg / total_pkgs) if total_pkgs > 0 else 0
-
-    return {
-        "bl_no": bl_no,
-        "carrier": "CMA CGM S.A." if "CMA" in text else "CARRIER IDENTIFIED",
-        "commodity": commodity,
-        "packages": total_pkgs,
-        "unit": unit,
-        "gross_kg": gross_kg,
-        "gross_mts": gross_kg / 1000.0,
-        "net_kg": net_kg,
-        "net_mts": net_kg / 1000.0,
-        "container_count": container_count,
-        "containers": containers,
-        "avg_unit_weight": f"{avg_unit_wt:.1f} kg/{unit.lower()[:-1]}",
-        "gstin": gstin,
-        "iec": iec,
-        "verdict": "CRITICAL BLOCKERS FOUND" if len(blockers) > 0 else "APPROVED",
-        "discrepancies": discrepancies,
-        "redline_actions": redline_actions
-    }
-
 @app.post("/validate")
 async def validate_document(file: UploadFile = File(...)):
     content = await file.read()
@@ -267,9 +147,9 @@ async def validate_document(file: UploadFile = File(...)):
         full_text += f"\n--- PAGE {idx + 1} ---\n" + page.get_text()
 
     audit_data = None
-    prompt = f"Perform a complete trade compliance and redline audit on this Bill of Lading text:\n\n{full_text}"
+    prompt = f"Perform the complete 28-point trade compliance and redline audit on this Bill of Lading text:\n\n{full_text}"
 
-    # Tier 1: Try Groq API (Fast, Reliable JSON)
+    # Tier 1: Try Groq Primary (Fast inference)
     if GROQ_API_KEY:
         try:
             groq_client = Groq(api_key=GROQ_API_KEY)
@@ -288,7 +168,7 @@ async def validate_document(file: UploadFile = File(...)):
         except Exception:
             audit_data = None
 
-    # Tier 2: Failover to Gemini API if Groq fails
+    # Tier 2: Failover to Gemini if Groq fails
     if not audit_data and GEMINI_API_KEY:
         try:
             gemini_client = genai.Client(api_key=GEMINI_API_KEY)
@@ -306,11 +186,10 @@ async def validate_document(file: UploadFile = File(...)):
         except Exception:
             audit_data = None
 
-    # Tier 3: Deterministic Local Nereus Engine if both cloud APIs fail
     if not audit_data:
-        audit_data = local_fallback_engine(full_text.upper())
+        raise RuntimeError("Validation engine temporarily busy. Please retry.")
 
-    # Draw discrete green checks and redlines on PDF page pixels
+    # Annotate carrier PDF pages directly
     redline_actions = audit_data.get("redline_actions", [])
     page_images = annotate_pdf_pages(doc, redline_actions)
     audit_data["pages"] = page_images
