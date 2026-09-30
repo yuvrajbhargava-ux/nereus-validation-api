@@ -5,54 +5,52 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Nereus AI — Trade Document Validation Portal</title>
 <style>
-:root{--navy:#0b1735;--blue:#0f659c;--sky:#eaf7ff;--ink:#16243a;--muted:#617088;--line:#d7e0ec;--bg:#f3f6fa;--green:#137a45;--greenbg:#e8f7ee;--amber:#a65b05;--amberbg:#fff4d8;--red:#b42318;--redbg:#feeceb}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,-apple-system,sans-serif}
-button,input,select,textarea{font:inherit}
-button{cursor:pointer}
-.header{background:linear-gradient(115deg,#08132c,#183c62);color:#fff;padding:22px 24px;border-bottom:3px solid #43c5f5}
+:root{--navy:#0f172a;--blue:#1e3a8a;--sky:#e0f2fe;--ink:#0f172a;--muted:#64748b;--line:#cbd5e1;--bg:#f1f5f9;--green:#15803d;--greenbg:#f0fdf4;--amber:#b45309;--amberbg:#fffbeb;--red:#b91c1c;--redbg:#fef2f2}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+button,input{font:inherit}button{cursor:pointer}
+.header{background:#0f172a;color:#fff;padding:18px 24px;border-bottom:3px solid #0284c7}
 .brand{display:flex;gap:12px;align-items:center;max-width:1200px;margin:auto}
-.mark{border:1px solid #72d9fc;border-radius:8px;width:36px;height:36px;display:grid;place-items:center;color:#72d9fc;font-size:18px;font-weight:800}
-.header h1{margin:0;font-size:20px}
-.header p{margin:2px 0 0;color:#c9d9eb;font-size:12px}
-.shell{max-width:1200px;margin:auto;padding:28px 20px 55px}
-.panel{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);padding:24px}
-.panel h2{margin:0 0 16px;font-size:16px}
-.dropzone{border:2px dashed #94a9c5;border-radius:10px;min-height:160px;display:flex;justify-content:center;align-items:center;flex-direction:column;text-align:center;padding:24px;background:#fcfdff;cursor:pointer}
-.dropzone.drag{background:var(--sky);border-color:#269ed3}
-.dropicon{font-size:28px;color:var(--blue)}
-.dropzone p{margin:8px 0 4px;font-size:15px;font-weight:750}
-.dropzone small{color:var(--muted)}
-.file-btn{margin-top:12px;border:1px solid #badcf0;color:#07547f;background:#eaf6fd;border-radius:7px;padding:8px 16px;font-weight:700;display:inline-block;cursor:pointer}
-.analysis-status{margin-top:16px;padding:12px 14px;border:1px solid #94cfe9;background:#eef9ff;color:#07547f;border-radius:8px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:10px}
-.analysis-status.error{background:#fff0ef;border-color:#f0b9b4;color:#a02219}
-.spinner{width:16px;height:16px;border:2px solid #a9dced;border-top-color:#0873a8;border-radius:50%;animation:spin .72s linear infinite}
+.mark{background:#0284c7;border-radius:6px;width:34px;height:34px;display:grid;place-items:center;color:#fff;font-size:18px;font-weight:900}
+.header h1{font-size:18px;letter-spacing:-0.02em}
+.header p{color:#94a3b8;font-size:12px;margin-top:2px}
+.shell{max-width:1100px;margin:auto;padding:24px 16px 60px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.05);padding:24px}
+.dropzone{border:2px dashed #94a3b8;border-radius:8px;min-height:150px;display:flex;justify-content:center;align-items:center;flex-direction:column;text-align:center;padding:20px;background:#f8fafc;cursor:pointer}
+.dropzone.drag{background:var(--sky);border-color:#0284c7}
+.dropicon{font-size:26px;color:#0284c7;margin-bottom:6px}
+.dropzone p{font-size:14px;font-weight:700}
+.dropzone small{color:var(--muted);font-size:12px}
+.file-btn{margin-top:12px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;border-radius:6px;padding:7px 14px;font-weight:700;font-size:12px}
+.analysis-status{margin-top:16px;padding:12px 14px;border:1px solid #bae6fd;background:#f0f9ff;color:#0369a1;border-radius:6px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:10px}
+.spinner{width:16px;height:16px;border:2px solid #bae6fd;border-top-color:#0284c7;border-radius:50%;animation:spin .72s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
-.toolbar{margin-top:28px;display:flex;align-items:center;justify-content:space-between;background:#1e2c43;color:#fff;border-radius:10px 10px 0 0;padding:12px 18px}
-.toolbar-actions{display:flex;gap:8px}
-.toolbar button{border:1px solid #7d90ac;background:transparent;color:#fff;border-radius:6px;padding:7px 12px;font-weight:700;font-size:12px}
-.pages{background:#e5ebf2;padding:24px;border-radius:0 0 10px 10px}
-.page{max-width:980px;background:#fff;margin:0 auto 24px;padding:40px;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-radius:4px}
-.title{display:flex;justify-content:space-between;border-bottom:2px solid var(--navy);padding-bottom:14px;margin-bottom:18px}
-.title h2{margin:0;font-size:22px;color:var(--navy)}
-.kpis{display:grid;grid-template-columns:2fr repeat(3,1fr);gap:10px;margin-bottom:20px}
-.kpi{border:1px solid var(--line);border-radius:8px;padding:12px}
-.kpi span{display:block;text-transform:uppercase;font-size:10px;color:var(--muted);font-weight:800}
-.kpi b{display:block;font-size:20px;margin-top:4px}
-.green{color:var(--green)}.amber{color:var(--amber)}.red{color:var(--red)}
-.shipment{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:8px;margin-bottom:20px}
-.shipment div{padding:10px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.toolbar{margin-top:24px;display:flex;align-items:center;justify-content:space-between;background:#0f172a;color:#fff;border-radius:8px 8px 0 0;padding:12px 18px}
+.toolbar button{background:#0284c7;border:0;color:#fff;border-radius:6px;padding:7px 14px;font-weight:700;font-size:12px}
+.pages{background:#cbd5e1;padding:20px;border-radius:0 0 8px 8px}
+.page{background:#fff;margin:0 auto 20px;padding:36px;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-radius:4px}
+.title{display:flex;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:12px;margin-bottom:16px}
+.title h2{font-size:20px;color:#0f172a}
+.verdict-banner{padding:12px 16px;border-radius:6px;font-weight:800;font-size:13px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.verdict-banner.red{background:#fee2e2;color:#991b1b;border:1px solid #f87171}
+.verdict-banner.green{background:#dcfce7;color:#166534;border:1px solid #4ade80}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+.kpi{border:1px solid var(--line);border-radius:6px;padding:10px;text-align:center;background:#f8fafc}
+.kpi span{display:block;text-transform:uppercase;font-size:9px;color:var(--muted);font-weight:800}
+.kpi b{display:block;font-size:16px;margin-top:4px;color:#0f172a}
+.kpi.red b{color:#b91c1c}.kpi.green b{color:#15803d}.kpi.amber b{color:#b45309}
+.shipment{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:6px;margin-bottom:18px;background:#fff}
+.shipment div{padding:8px 10px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
 .shipment label{display:block;font-size:9px;color:var(--muted);font-weight:800;text-transform:uppercase}
-.shipment b{font-size:12px}
-.table{border-collapse:collapse;width:100%;font-size:12px;margin-top:10px}
-.table th,.table td{border:1px solid var(--line);padding:9px;text-align:left}
-.table th{background:#edf3f8;font-size:10px;text-transform:uppercase}
-.status{display:inline-block;border-radius:99px;padding:3px 8px;font-size:10px;font-weight:800}
+.shipment b{font-size:11px}
+.table{border-collapse:collapse;width:100%;font-size:11px;margin-top:8px}
+.table th,.table td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+.table th{background:#f1f5f9;font-size:9px;text-transform:uppercase;color:#475569}
+.status{display:inline-block;border-radius:99px;padding:3px 7px;font-size:9px;font-weight:800}
 .match{color:var(--green);background:var(--greenbg)}.warning{color:var(--amber);background:var(--amberbg)}.blocker{color:var(--red);background:var(--redbg)}
-.dochead{display:flex;justify-content:space-between;border-bottom:2px solid #22324b;padding-bottom:12px;margin-bottom:16px}
-.badge{border-radius:6px;padding:6px 10px;font-size:11px;font-weight:800}
-@media print{body{background:#fff}.header,#intake,.toolbar{display:none!important}.pages{padding:0;background:#fff}.page{box-shadow:none;padding:12mm;page-break-after:always}}
+.dochead{display:flex;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:10px;margin-bottom:14px}
+@media print{body{background:#fff}.header,#intake,.toolbar{display:none!important}.pages{padding:0;background:#fff}.page{box-shadow:none;padding:10mm;page-break-after:always}}
 </style>
 </head>
 <body>
@@ -67,26 +65,24 @@ button{cursor:pointer}
 </header>
 <main class="shell">
   <section class="panel" id="intake">
-    <h2>Upload a Draft Bill of Lading</h2>
+    <h2 style="margin-bottom:14px;font-size:15px;">Upload a Draft Bill of Lading</h2>
     <input id="fileInput" type="file" accept=".pdf,.txt,application/pdf,text/plain" style="display:none">
     <div id="dropzone" class="dropzone">
       <div class="dropicon">⇧</div>
-      <p>Drop your Draft Bill of Lading (PDF or TXT) here</p>
-      <small>Supports all carriers (CMA CGM, MSC, Maersk, etc.)</small>
+      <p>Drop your Draft Bill of Lading (PDF) here</p>
+      <small>Autonomous validation against carrier tariffs, statutory IDs, and commodity benchmarks</small>
       <label for="fileInput" class="file-btn" onclick="event.stopPropagation()">Browse files</label>
     </div>
     <div id="analysisStatus" class="analysis-status hidden">
       <span class="spinner"></span>
-      <span id="analysisText">Checking document...</span>
+      <span id="analysisText">Validating document...</span>
     </div>
   </section>
 
   <section id="report" class="hidden">
     <div class="toolbar">
-      <strong id="caseTitle">Audit Report</strong>
-      <div class="toolbar-actions">
-        <button onclick="window.print()">Download PDF / Print</button>
-      </div>
+      <strong id="caseTitle">Trade Validation Report & Editorial Redlines</strong>
+      <button onclick="window.print()">Download PDF / Print</button>
     </div>
     <div class="pages">
       <article class="page" id="summaryPage"></article>
@@ -108,22 +104,19 @@ dz.addEventListener('click', () => fi.click());
 dz.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if(f) processFile(f); });
 fi.addEventListener('change', () => { const f = fi.files[0]; if(f) processFile(f); });
 
-function showStatus(msg, cls='') {
-  statusBox.className = 'analysis-status ' + cls;
+function showStatus(msg) {
   statusText.textContent = msg;
   statusBox.classList.remove('hidden');
 }
 
 async function processFile(file) {
-  showStatus('Checking document particulars & validating trade fields...');
-
+  showStatus('Analyzing trade document against Nereus validation rulebook...');
   const steps = [
-    { t: 4000, msg: 'Extracting carrier text & container particulars...' },
-    { t: 12000, msg: 'Auditing statutory IDs, GSTIN & DGFT IEC compliance...' },
-    { t: 22000, msg: 'Reconciling packaging tare arithmetic & commodity benchmarks...' },
-    { t: 34000, msg: 'Finalizing discrepancy matrix & rendering document pages...' }
+    { t: 3000, msg: 'Extracting carrier text, container particulars & SOB stamp...' },
+    { t: 9000, msg: 'Auditing statutory IDs, GSTIN & DGFT IEC compliance...' },
+    { t: 16000, msg: 'Reconciling packaging tare arithmetic against commodity benchmarks...' },
+    { t: 26000, msg: 'Generating discrepancy matrix & rendering editorial redlines...' }
   ];
-
   const timers = steps.map(s => setTimeout(() => showStatus(s.msg), s.t));
 
   try {
@@ -131,13 +124,13 @@ async function processFile(file) {
     fd.append('file', file);
     const res = await fetch(API_URL, { method: 'POST', body: fd });
     timers.forEach(clearTimeout);
-    if (!res.ok) throw new Error('Validation service returned status ' + res.status);
+    if (!res.ok) throw new Error('Backend returned status ' + res.status);
     const data = await res.json();
     statusBox.classList.add('hidden');
     renderReport(data);
   } catch (err) {
     timers.forEach(clearTimeout);
-    showStatus('Processing service error: ' + err.message, 'error');
+    showStatus('Processing error: ' + err.message);
   }
 }
 
@@ -147,32 +140,58 @@ function renderReport(data) {
   const verdict = data.verdict || 'APPROVED';
   const isBlocker = verdict.includes('BLOCKER');
 
-  document.getElementById('caseTitle').textContent = `Audit Report · ${ext.bl_no || 'Draft B/L'}`;
+  document.getElementById('caseTitle').textContent = `Validation Report · ${ext.bl_no} · ${ext.commodity}`;
 
-  const grossStr = ext.gross_mts ? `${ext.gross_mts.toFixed(3)} MTS (${ext.gross_kg.toLocaleString()} kg)` : `${(ext.gross_kg||0).toLocaleString()} kg`;
-  const netStr = ext.net_mts ? `${ext.net_mts.toFixed(3)} MTS (${ext.net_kg.toLocaleString()} kg)` : `${(ext.net_kg||0).toLocaleString()} kg`;
-
-  // Page 1: Executive Summary & Discrepancy Matrix
+  // Page 1: Executive Validation Summary matching reference standard
   document.getElementById('summaryPage').innerHTML = `
     <div class="title">
-      <div><h2>Executive Validation Summary</h2></div>
-      <div>B/L: <b>${ext.bl_no || 'Not detected'}</b></div>
+      <div>
+        <div style="font-size:9px;font-weight:800;color:#0284c7;text-transform:uppercase;">Nereus AI · Trade Document Validation Engine</div>
+        <h2>TRADE VALIDATION REPORT & EDITORIAL REDLINES</h2>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">Draft B/L: <b>${ext.bl_no}</b> • Commodity: <b>${ext.commodity}</b> • Carrier: <b>${ext.carrier}</b></div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:var(--muted);">
+        Status: <b class="${isBlocker ? 'red' : 'green'}">${verdict}</b><br>
+        Audit Date: ${new Date().toLocaleDateString()}
+      </div>
     </div>
+
+    <div class="verdict-banner ${isBlocker ? 'red' : 'green'}">
+      <span>VERDICT: ${verdict} ${isBlocker ? '— REVISION REQUIRED PRIOR TO ISSUANCE' : '— APPROVED FOR COMMERCIAL RELEASE'}</span>
+      <span>${ext.blockers_count || 0} Blockers • ${ext.warnings_count || 0} Warnings • ${ext.matches_count || 0} Matches</span>
+    </div>
+
     <div class="kpis">
-      <div class="kpi"><span>Verdict</span><b class="${isBlocker ? 'red' : 'green'}">${verdict}</b></div>
-      <div class="kpi"><span>Packages</span><b>${ext.packages || 0} ${ext.unit || ''}</b></div>
-      <div class="kpi"><span>Gross Cargo Weight</span><b>${grossStr}</b></div>
-      <div class="kpi"><span>Containers</span><b>${ext.container_count || 0}</b></div>
+      <div class="kpi ${ext.blockers_count ? 'red' : ''}"><span>Critical Blockers</span><b>${ext.blockers_count || 0}</b></div>
+      <div class="kpi ${ext.warnings_count ? 'amber' : ''}"><span>Soft Warnings</span><b>${ext.warnings_count || 0}</b></div>
+      <div class="kpi green"><span>Verified Matches</span><b>${ext.matches_count || 0}</b></div>
+      <div class="kpi"><span>Container Count</span><b>${ext.container_count || 0} × 40HC</b></div>
+      <div class="kpi"><span>Total ${ext.unit}</span><b>${ext.packages || 0} ${ext.unit}</b></div>
+      <div class="kpi"><span>Avg Unit Weight</span><b>${ext.avg_bale_wt || 'N/A'}</b></div>
     </div>
+
     <div class="shipment">
-      <div><label>Carrier</label><b>${ext.carrier || 'Not stated'}</b></div>
-      <div><label>Net Cargo Weight</label><b>${netStr}</b></div>
+      <div><label>B/L Number</label><b>${ext.bl_no}</b></div>
+      <div><label>Carrier</label><b>${ext.carrier}</b></div>
+      <div><label>Gross Cargo Weight</label><b>${ext.gross_mts ? ext.gross_mts.toFixed(3) + ' MTS' : ext.gross_kg.toLocaleString() + ' kg'}</b></div>
+      <div><label>Net Cargo Weight</label><b>${ext.net_mts ? ext.net_mts.toFixed(3) + ' MTS' : ext.net_kg.toLocaleString() + ' kg'}</b></div>
+      <div><label>Containers</label><b>${ext.containers.length ? ext.containers.join(', ') : ext.container_count + ' × 40HC'}</b></div>
       <div><label>GSTIN</label><b>${ext.gstin || 'Not detected'}</b></div>
-      <div><label>IEC</label><b>${ext.iec || 'Not detected'}</b></div>
+      <div><label>DGFT IEC</label><b>${ext.iec || 'Not detected'}</b></div>
+      <div><label>Commodity Standard</label><b>${ext.commodity}</b></div>
     </div>
-    <h3>Discrepancy Matrix</h3>
+
+    <h3 style="font-size:13px;margin:14px 0 6px;color:#0f172a;">5-Column Discrepancy Matrix</h3>
     <table class="table">
-      <thead><tr><th>Field</th><th>Requirement</th><th>Stated Value</th><th>Status</th><th>Required Correction</th></tr></thead>
+      <thead>
+        <tr>
+          <th style="width:18%;">Field</th>
+          <th style="width:28%;">Requirement / Benchmark</th>
+          <th style="width:24%;">Draft B/L Stated</th>
+          <th style="width:10%;">Status</th>
+          <th style="width:20%;">Risk Impact & Required Correction</th>
+        </tr>
+      </thead>
       <tbody>
         ${disc.map(d => `
           <tr>
@@ -185,24 +204,26 @@ function renderReport(data) {
         `).join('')}
       </tbody>
     </table>
+    <div style="margin-top:14px;font-size:9px;color:var(--muted);text-align:right;">Page 1 of ${1 + (ext.pages ? ext.pages.length : 0)} — Executive Validation Summary</div>
   `;
 
-  // Page 2: Carrier Original Pages with Redlines
+  // Pages 2+: Original carrier document pages with visual redlines
   const pagesHtml = (ext.pages || []).map((imgSrc, idx) => `
-    <div style="margin-bottom: 24px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff;">
-      <div style="background: #edf3f8; padding: 10px 16px; font-size: 12px; font-weight: 700; color: #43556e; border-bottom: 1px solid var(--line);">
-        Page ${idx + 1} — Carrier Original with Editorial Annotations
+    <div style="margin-bottom: 24px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #fff;">
+      <div style="background: #f1f5f9; padding: 8px 14px; font-size: 11px; font-weight: 700; color: #334155; border-bottom: 1px solid var(--line); display:flex; justify-content:space-between;">
+        <span>Page ${idx + 2} of ${1 + ext.pages.length} — Original Carrier Draft with Human Editorial Redlines</span>
+        <span style="color:#b91c1c; font-weight:800;">Targeted Redlines Applied</span>
       </div>
-      <img src="${imgSrc}" style="width: 100%; display: block; min-height: 400px;" alt="B/L Page ${idx + 1}" />
+      <img src="${imgSrc}" style="width: 100%; display: block;" alt="B/L Page ${idx + 1}" />
     </div>
   `).join('');
 
   document.getElementById('redlinePage').innerHTML = `
     <div class="dochead">
-      <div><h3>DRAFT BILL OF LADING — EDITORIAL REDLINE VIEW</h3><p>${ext.carrier} · ${ext.bl_no}</p></div>
+      <div><h3>ORIGINAL DRAFT BILL OF LADING — EDITORIAL REDLINE VIEW</h3><p>${ext.carrier} · ${ext.bl_no} · ${ext.commodity}</p></div>
       <div class="badge ${isBlocker ? 'blocker' : 'match'}">${verdict}</div>
     </div>
-    <div style="margin-top: 20px;">
+    <div style="margin-top: 14px;">
       ${pagesHtml || '<p style="color: var(--muted); padding: 20px 0;">No page images generated.</p>'}
     </div>
   `;
